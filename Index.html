@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Central de Documentos</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+
+  <!-- JSZip e FileSaver para download zip -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <style>
+    :root {
+      --cor-institucional: #002244;
+      --cor-texto-claro: #ffffff;
+    }
+
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      transition: all 0.3s ease-in-out;
+    }
+
+    body.contraste {
+      background-color: #000 !important;
+      color: #fff !important;
+    }
+
+    body.contraste header,
+    body.contraste footer {
+      background-color: #fff !important;
+      color: #000 !important;
+    }
+
+    body.daltonico * {
+      filter: hue-rotate(45deg) !important;
+    }
+
+    header {
+      background-color: var(--cor-institucional);
+      color: var(--cor-texto-claro);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .accessibility-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .accessibility-buttons button {
+      background-color: transparent;
+      border: 1px solid #0be1f0;
+      color: #0be1f0;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.9rem;
+      border-radius: 0.3rem;
+      transition: background-color 0.3s;
+      cursor: pointer;
+    }
+
+    .accessibility-buttons button:hover {
+      background-color: #ffffff22;
+    }
+
+    main {
+      padding: 2rem;
+      padding-bottom: 80px;
+    }
+
+    .document-card {
+      margin-bottom: 1.5rem;
+    }
+
+    footer {
+      background-color: var(--cor-institucional);
+      color: var(--cor-texto-claro);
+      text-align: center;
+      padding: 1rem;
+      position: fixed;
+      width: 100%;
+      bottom: 0;
+      z-index: 999;
+    }
+
+    .floating-button {
+      position: fixed;
+      right: 1rem;
+      bottom: 5rem;
+      background-color: var(--cor-institucional);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      font-size: 1.5rem;
+      cursor: pointer;
+      z-index: 1000;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="header-title">
+      <img src="logo.png" alt="Logo do Sistema" height="40" />
+      <h1 class="h4 m-0">Central de Documentos</h1>
+    </div>
+    <div class="accessibility-buttons">
+      <button onclick="toggleContraste()" title="Alto Contraste"><i class="bi bi-circle-half"></i> </button>
+      <button onclick="toggleDaltonico()" title="Modo Daltônico"><i class="bi bi-palette"></i> </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="mb-4">
+      <div class="row g-2">
+        <div class="col-md-6">
+          <select class="form-select" id="filtroCategoria" aria-label="Filtro Categoria">
+            <option value="">Todas as Categorias</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <select class="form-select" id="filtroTipo" aria-label="Filtro Tipo">
+            <option value="">Todos os Tipos</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <button class="btn btn-success" onclick="baixarSelecionados()">📦 Baixar Selecionados (.zip)</button>
+    </div>
+
+    <div class="row" id="documentos" aria-live="polite" aria-relevant="additions"></div>
+  </main>
+
+  <button class="floating-button" aria-label="Sobre" onclick="abrirSobre()">ℹ️</button>
+
+  <footer>
+    <p>&copy; 2025 - Sistema de Documentação Corporativa</p>
+  </footer>
+
+  <!-- Modal Sobre -->
+  <div class="modal fade" id="sobreModal" tabindex="-1" aria-labelledby="sobreLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="sobreLabel">Sobre a Ferramenta</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p>Esta ferramenta tem como objetivo facilitar o acesso e download de documentos padronizados da empresa, organizados por categorias e tipos.</p>
+          <p>Oferece recursos de acessibilidade, integração com LIBRAS via VLibras e permite baixar múltiplos arquivos em ZIP.</p>
+          <iframe width="100%" height="315" src="https://www.youtube.com/embed/tgbNymZ7vqY" frameborder="0" allowfullscreen
+            title="Vídeo explicativo"></iframe>
+          <a href="manual.pdf" class="btn btn-secondary mt-3" download>Baixar Manual em PDF</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VLibras -->
+  <div vw class="enabled" aria-label="VLibras Plugin">
+    <div vw-access-button class="active"></div>
+    <div vw-plugin-wrapper>
+      <div class="vw-plugin-top-wrapper"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <script>
+    // Inicializa VLibras
+    new window.VLibras.Widget('https://vlibras.gov.br/app');
+
+    // Acessibilidade
+    function toggleContraste() {
+      document.body.classList.toggle('contraste');
+    }
+
+    function toggleDaltonico() {
+      document.body.classList.toggle('daltonico');
+    }
+
+    // Modal sobre
+    function abrirSobre() {
+      const modal = new bootstrap.Modal(document.getElementById('sobreModal'));
+      modal.show();
+    }
+
+    // Documentos disponíveis
+    const documentos = [
+      { titulo: "HU Cadastro", categoria: "LEV - Levantamento de Requisitos", tipo: " HU - História de Usuário", codigo: "DOC-LEV-HU-XX", url: "hu-cadastro.docx"},
+      { titulo: "Teste de Usabilidade", categoria: "TES - Teste de Software", tipo: "USA - Teste de Usabilidade", codigo: "DOC-TES-USA-XX", url: "teste-usabilidade.pdf" },
+      { titulo: "Prototipagem", categoria: "PRS - Projeto de Software", tipo: "INT - Protótipo de Interface", codigo: "DOC-PRS-INT-XX",url: "prototipo.pptx" },
+      { titulo: "Requisitos Não Funcionais", categoria: "LEV - Levantamento de Requisitos", tipo: "RNF - Requisito Não Funcional", codigo: "DOC-LEV-RNF-XX", url: "requisitos-nao-funcionais.pdf" }
+    ];
+
+    // Renderiza filtros Categoria e Tipo
+    function renderFiltros() {
+      const categorias = [...new Set(documentos.map(d => d.categoria))];
+      const tipos = [...new Set(documentos.map(d => d.tipo))];
+
+      const selectCategoria = document.getElementById('filtroCategoria');
+      const selectTipo = document.getElementById('filtroTipo');
+
+      selectCategoria.innerHTML = `<option value="">Todas as Categorias</option>`;
+      selectTipo.innerHTML = `<option value="">Todos os Tipos</option>`;
+
+      categorias.forEach(c => selectCategoria.innerHTML += `<option value="${c}">${c}</option>`);
+      tipos.forEach(t => selectTipo.innerHTML += `<option value="${t}">${t}</option>`);
+
+      selectCategoria.addEventListener('change', filtrarDocumentos);
+      selectTipo.addEventListener('change', filtrarDocumentos);
+    }
+
+    // Filtra documentos conforme os filtros selecionados
+    function filtrarDocumentos() {
+      const categoria = document.getElementById('filtroCategoria').value;
+      const tipo = document.getElementById('filtroTipo').value;
+
+      const filtrado = documentos.filter(d => {
+        return (!categoria || d.categoria === categoria) &&
+               (!tipo || d.tipo === tipo);
+      });
+
+      renderDocumentos(filtrado);
+    }
+
+    // Renderiza os cards dos documentos com checkbox, baixar, visualizar e imprimir
+    function renderDocumentos(lista) {
+      const container = document.getElementById("documentos");
+      container.innerHTML = "";
+      lista.forEach(doc => {
+        container.innerHTML += `
+          <div class="col-md-4">
+            <div class="card document-card">
+              <div class="card-body">
+                <div class="form-check mb-2">
+                  <input class="form-check-input doc-checkbox" type="checkbox" value="${doc.url}" data-titulo="${doc.titulo}" id="chk-${doc.titulo.replace(/\s+/g, '-')}">
+                  <label class="form-check-label" for="chk-${doc.titulo.replace(/\s+/g, '-')}">${doc.titulo}</label>
+                </div>
+                <p class="card-text">
+                  <strong>Categoria:</strong> ${doc.categoria}<br>
+                  <strong>Tipo:</strong> ${doc.tipo}<br>
+                  <strong>Código:</strong> ${doc.codigo}<br>
+                </p>
+                <a href="${doc.url}" class="btn btn-primary" download>Baixar</a>
+                <button class="btn btn-secondary ms-2" onclick="visualizarDocumento('${doc.url}')"
+                  title="Visualizar Documento"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-info ms-2" onclick="imprimirDocumento('${doc.url}', '${doc.formato}')"
+                  title="Imprimir Documento"><i class="bi bi-printer"></i></button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // Função para visualizar documento (abre em nova aba)
+    function visualizarDocumento(url) {
+      window.open(url, '_blank');
+    }
+
+    // Função para imprimir documento
+    function imprimirDocumento(url, formato) {
+      if (formato.toLowerCase() === 'pdf') {
+        const win = window.open(url);
+        win.onload = function () {
+          win.focus();
+          win.print();
+        };
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+
+    // Baixa os arquivos selecionados em um único ZIP
+    async function baixarSelecionados() {
+      const checkboxes = document.querySelectorAll('.doc-checkbox:checked');
+      if (checkboxes.length === 0) {
+        alert("Selecione pelo menos um documento.");
+        return;
+      }
+
+      const zip = new JSZip();
+      const pasta = zip.folder("documentos");
+
+      for (const checkbox of checkboxes) {
+        const url = checkbox.value;
+        const titulo = checkbox.dataset.titulo.replace(/\s+/g, "_");
+        try {
+          const resposta = await fetch(url);
+          if (!resposta.ok) throw new Error(`Erro ao baixar: ${resposta.statusText}`);
+          const blob = await resposta.blob();
+          const extensao = url.split('.').pop();
+          pasta.file(`${titulo}.${extensao}`, blob);
+        } catch (erro) {
+          console.error(`Erro ao baixar ${titulo}: ${erro}`);
+        }
+      }
+
+      zip.generateAsync({ type: "blob" }).then(function (conteudo) {
+        saveAs(conteudo, "documentos_selecionados.zip");
+      });
+    }
+
+    // Inicializa filtros e documentos
+    renderFiltros();
+    renderDocumentos(documentos);
+  </script>
+</body>
+
+</html>
